@@ -14,41 +14,46 @@ UNKNOWN=3
 if [ $# -ge 2 ]; then
     WARNING_THRESHOLD=$1
     CRITICAL_THRESHOLD=$2
-elif [ $# -ge 1 ]; then
+elif [ $# -eq 1 ]; then
     WARNING_THRESHOLD=$1
 fi
 
 # Function to check disk space usage
 check_disk_space() {
-    local overall_status=$OK  # Initialize overall status as OK
+    local overall_status=$OK
+    local output=""
+    local performance_data=""
 
     # Loop through all mounted file systems using df
-    df -h | grep "/" | while read -r line; do
+    while IFS= read -r line; do
         # Extract the file system, usage, and mount point
         FILESYSTEM=$(echo "$line" | awk '{print $1}')
         USAGE=$(echo "$line" | awk '{print $5}' | sed 's/%//')
         MOUNT_POINT=$(echo "$line" | awk '{print $6}')
 
-        # Debugging output (optional)
-        echo "Checking $FILESYSTEM at $MOUNT_POINT: Usage = $USAGE%"
+        # Build performance data
+        performance_data+="'${MOUNT_POINT}'=${USAGE}%;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};0;100 "
 
         # Determine the plugin status based on usage thresholds
         if [ "$USAGE" -ge "$CRITICAL_THRESHOLD" ]; then
-            echo "CRITICAL: $FILESYSTEM is at $USAGE% capacity on $MOUNT_POINT"
-            overall_status=$CRITICAL  # Update overall status to CRITICAL
+            output+="CRITICAL: $FILESYSTEM is at $USAGE% capacity on $MOUNT_POINT. "
+            [ $overall_status -lt $CRITICAL ] && overall_status=$CRITICAL
         elif [ "$USAGE" -ge "$WARNING_THRESHOLD" ]; then
-            echo "WARNING: $FILESYSTEM is at $USAGE% capacity on $MOUNT_POINT"
-            overall_status=$WARNING  # Update overall status to WARNING
+            output+="WARNING: $FILESYSTEM is at $USAGE% capacity on $MOUNT_POINT. "
+            [ $overall_status -lt $WARNING ] && overall_status=$WARNING
         fi
-    done
+    done < <(df -h | grep "^/")
 
     # Final output based on overall status
     if [ $overall_status -eq $OK ]; then
-        echo "OK: All file systems are within safe usage limits."
+        echo "OK: All file systems are within safe usage limits. | $performance_data"
+    else
+        echo "${output%?}| $performance_data"
     fi
-    
-    exit $overall_status  # Exit with the overall status
+
+    return $overall_status
 }
 
 # Main script execution
 check_disk_space
+exit $?
