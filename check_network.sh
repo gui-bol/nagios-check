@@ -11,7 +11,7 @@ usage() {
 
 # Function to convert kilobytes per second to megabits per second
 kb_to_mbits() {
-    echo "scale=2; $1 * 8 / 1000" | bc
+    echo "$1 * 8 / 1000" | awk '{ printf "%.2f", $1 }'
 }
 
 # Parse command line arguments
@@ -47,16 +47,16 @@ RX_MBPS=$(kb_to_mbits $RX_KB)
 TX_MBPS=$(kb_to_mbits $TX_KB)
 
 # Calculate total Mbps
-TOTAL_MBPS=$(echo "$RX_MBPS + $TX_MBPS" | bc)
+TOTAL_MBPS=$(echo "$RX_MBPS + $TX_MBPS" | awk '{ printf "%.2f", $1 }')
 
 # Prepare performance data
 PERFDATA="rx=$RX_MBPS;$WARNING;$CRITICAL tx=$TX_MBPS;$WARNING;$CRITICAL"
 
 # Check against thresholds and set exit status
-if (( $(echo "$TOTAL_MBPS > $CRITICAL" | bc -l) )); then
+if (( $(awk 'BEGIN {print ('"$TOTAL_MBPS"' > '"$CRITICAL"') ? 1 : 0}') )); then
     echo "CRITICAL: Network traffic on $INTERFACE is $TOTAL_MBPS Mbps | $PERFDATA"
     exit 2
-elif (( $(echo "$TOTAL_MBPS > $WARNING" | bc -l) )); then
+elif (( $(awk 'BEGIN {print ('"$TOTAL_MBPS"' > '"$WARNING"') ? 1 : 0}') )); then
     echo "WARNING: Network traffic on $INTERFACE is $TOTAL_MBPS Mbps | $PERFDATA"
     exit 1
 else
