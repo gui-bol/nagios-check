@@ -45,10 +45,10 @@ hr_zfs_arc_size=$(numfmt --to=iec-i --suffix=B --format="%.2f" $zfs_arc_size)
 perfdata="used=${used_percent}%;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};0;100 total=${total_memory}B used=${actual_used_memory}B zfs_arc=${zfs_arc_size}B"
 
 # Check against thresholds and exit with appropriate status
-if (( $(echo "$used_percent >= $CRITICAL_THRESHOLD" | bc -l) )); then
+if (( $(awk 'BEGIN {print ('"$used_percent"' >= '"$CRITICAL_THRESHOLD"') ? 1 : 0}') )); then
     echo "CRITICAL - Memory usage at ${used_percent}% | $perfdata"
     exit 2
-elif (( $(echo "$used_percent >= $WARNING_THRESHOLD" | bc -l) )); then
+elif (( $(awk 'BEGIN {print ('"$used_percent"' >= '"$WARNING_THRESHOLD"') ? 1 : 0}') )); then
     echo "WARNING - Memory usage at ${used_percent}% | $perfdata"
     exit 1
 else
