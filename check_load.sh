@@ -32,9 +32,9 @@ IFS=',' read -ra CRIT_THRESH <<< "$CRITICAL_THRESHOLD"
 
 # Function to compare load against threshold
 check_threshold() {
-    local load=$1
+    local current_load=$1
     local threshold=$2
-    awk -v load="$load" -v threshold="$threshold" 'BEGIN {exit (load <= threshold)}'
+    awk -v current_load="$current_load" -v threshold="$threshold" 'BEGIN {exit (current_load <= threshold)}'
 }
 
 # Check against thresholds
