@@ -21,7 +21,7 @@ fi
 # Function to check disk space usage
 check_disk_space() {
     # Loop through all mounted file systems
-    df -h | grep "^/" | while read -r line; do
+    df -h | grep "/" | while read -r line; do
         # Extract the file system, usage, and mount point
         FILESYSTEM=$(echo "$line" | awk '{print $1}')
         USAGE=$(echo "$line" | awk '{print $5}' | sed 's/%//')
