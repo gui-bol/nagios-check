@@ -29,6 +29,9 @@ check_disk_space() {
         USAGE=$(echo "$line" | awk '{print $5}' | sed 's/%//')
         MOUNT_POINT=$(echo "$line" | awk '{print $6}')
 
+        # Debugging output (optional)
+        echo "Checking $FILESYSTEM at $MOUNT_POINT: Usage = $USAGE%"
+
         # Determine the plugin status based on usage thresholds
         if [ "$USAGE" -ge "$CRITICAL_THRESHOLD" ]; then
             echo "CRITICAL: $FILESYSTEM is at $USAGE% capacity on $MOUNT_POINT"
