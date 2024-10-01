@@ -38,14 +38,16 @@ if [ $? -ne 0 ]; then
     exit $STATE_CRITICAL
 fi
 
-# Remove sign from offset
-OFFSET_ABS=$(echo $OFFSET | tr -d '-')
+# Remove sign from offset and convert to milliseconds (integer)
+OFFSET_ABS_MS=$(printf "%.0f" $(echo "${OFFSET#-} * 1000" | bc))
+WARNING_THRESHOLD_MS=$(printf "%.0f" $(echo "$WARNING_THRESHOLD * 1000" | bc))
+CRITICAL_THRESHOLD_MS=$(printf "%.0f" $(echo "$CRITICAL_THRESHOLD * 1000" | bc))
 
 # Compare offset with thresholds
-if (( $(echo "$OFFSET_ABS > $CRITICAL_THRESHOLD" | bc -l) )); then
+if (( OFFSET_ABS_MS > CRITICAL_THRESHOLD_MS )); then
     echo "CRITICAL: Time offset is $OFFSET seconds"
     exit $STATE_CRITICAL
-elif (( $(echo "$OFFSET_ABS > $WARNING_THRESHOLD" | bc -l) )); then
+elif (( OFFSET_ABS_MS > WARNING_THRESHOLD_MS )); then
     echo "WARNING: Time offset is $OFFSET seconds"
     exit $STATE_WARNING
 else
