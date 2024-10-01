@@ -39,9 +39,9 @@ if [ $? -ne 0 ]; then
 fi
 
 # Remove sign from offset and convert to milliseconds (integer)
-OFFSET_ABS_MS=$(printf "%.0f" $(echo "${OFFSET#-} * 1000" | bc))
-WARNING_THRESHOLD_MS=$(printf "%.0f" $(echo "$WARNING_THRESHOLD * 1000" | bc))
-CRITICAL_THRESHOLD_MS=$(printf "%.0f" $(echo "$CRITICAL_THRESHOLD * 1000" | bc))
+OFFSET_ABS_MS=$(awk -v offset="$OFFSET" 'BEGIN {printf "%.0f", (offset>=0?offset:-offset)*1000}')
+WARNING_THRESHOLD_MS=$((WARNING_THRESHOLD * 1000))
+CRITICAL_THRESHOLD_MS=$((CRITICAL_THRESHOLD * 1000))
 
 # Compare offset with thresholds
 if (( OFFSET_ABS_MS > CRITICAL_THRESHOLD_MS )); then
