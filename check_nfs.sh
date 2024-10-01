@@ -2,7 +2,7 @@
 
 # Default values
 MOUNT_POINT=""
-TEST_FILE="/tmp/nfs_test_file_$$"
+TEST_FILE="nfs_test_file_$$.tmp"
 
 # Function to print usage
 usage() {
@@ -24,20 +24,21 @@ if [ -z "$MOUNT_POINT" ]; then
     usage
 fi
 
-# Check if mount point is actually mounted
+# Check if mount point is mounted by verifying its existence in /proc/mounts
 if ! grep -qs "$MOUNT_POINT" /proc/mounts; then
     echo "CRITICAL: NFS mount point $MOUNT_POINT is not mounted"
     exit 2
 fi
 
-# Check if mount point is writable by creating a temporary file
-touch "$MOUNT_POINT/$TEST_FILE" &> /dev/null
+# Try to create a test file using dd command to verify write access
+dd if=/dev/zero of="$MOUNT_POINT/$TEST_FILE" bs=1 count=1 &> /dev/null
 
+# Check if the file was successfully written
 if [ $? -ne 0 ]; then
     echo "CRITICAL: NFS mount point $MOUNT_POINT is mounted but not writable"
     exit 2
 else
-    # Clean up the test file
+    # If successful, remove the test file and output success
     rm -f "$MOUNT_POINT/$TEST_FILE"
     echo "OK: NFS mount point $MOUNT_POINT is mounted and writable"
     exit 0
