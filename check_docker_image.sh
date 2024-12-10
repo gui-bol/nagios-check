@@ -5,15 +5,16 @@ NAGIOS_WARNING=1
 NAGIOS_CRITICAL=2
 NAGIOS_UNKNOWN=3
 
-# Function to fetch Docker Hub tag info
-get_docker_hub_tag() {
+# Function to fetch the latest tag from Docker Hub
+get_latest_tag() {
   local image=$1
-  local tag=$2
   local repo=${image%/*}
   local name=${image##*/}
   # Handle library images (e.g., "nginx" -> "library/nginx")
   [[ "$repo" == "$name" ]] && repo="library"
-  curl -s "https://hub.docker.com/v2/repositories/${repo}/${name}/tags/${tag}" | jq -r '.last_updated'
+
+  # Fetch the latest tag
+  curl -s "https://hub.docker.com/v2/repositories/${repo}/${name}/tags?page_size=1&ordering=last_updated" | jq -r '.results[0].name'
 }
 
 # Get all running Docker containers' images
@@ -29,24 +30,29 @@ fi
 STATUS="$NAGIOS_OK"
 OUTPUT=""
 
-# Compare each running image with Docker Hub
+# Compare each running image with the latest tag on Docker Hub
 for IMAGE in $RUNNING_IMAGES; do
   IMAGE_NAME=${IMAGE%:*}
   IMAGE_TAG=${IMAGE#*:}
   [[ "$IMAGE_NAME" == "$IMAGE_TAG" ]] && IMAGE_TAG="latest"
 
-  # Get last updated timestamp from Docker Hub
-  HUB_VERSION=$(get_docker_hub_tag "$IMAGE_NAME" "$IMAGE_TAG")
+  # Get the latest tag from Docker Hub
+  LATEST_TAG=$(get_latest_tag "$IMAGE_NAME")
 
-  # Check if we could fetch the Hub version
-  if [ -z "$HUB_VERSION" ]; then
-    OUTPUT+="CRITICAL: Unable to fetch info for $IMAGE from Docker Hub.\n"
+  # Check if we could fetch the latest tag
+  if [ -z "$LATEST_TAG" ]; then
+    OUTPUT+="CRITICAL: Unable to fetch the latest tag for $IMAGE from Docker Hub.\n"
     STATUS="$NAGIOS_CRITICAL"
     continue
   fi
 
-  # Compare versions (use timestamps or other logic if preferred)
-  OUTPUT+="OK: Running $IMAGE matches Docker Hub.\n"
+  # Compare the running tag with the latest tag
+  if [[ "$IMAGE_TAG" != "$LATEST_TAG" ]]; then
+    OUTPUT+="WARNING: Running image $IMAGE is outdated (latest: $IMAGE_NAME:$LATEST_TAG).\n"
+    STATUS="$NAGIOS_WARNING"
+  else
+    OUTPUT+="OK: Running image $IMAGE is up-to-date.\n"
+  fi
 done
 
 # Print the output
