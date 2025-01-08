@@ -25,7 +25,7 @@ while getopts "w:c:s:h" opt; do
 done
 
 # Check if ntpdate is installed
-if ! command -v ntpdate &> /dev/null; then
+if ! command -v /usr/sbin/ntpdate &> /dev/null; then
     echo "UNKNOWN: ntpdate is not installed"
     exit $STATE_UNKNOWN
 fi
