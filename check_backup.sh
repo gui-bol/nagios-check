@@ -1,6 +1,6 @@
 #!/bin/bash
 
-STATUS_FILE="/var/run/backup_status"
+STATUS_FILE="${1:-/var/run/backup_status}"
 MAX_AGE=$((48 * 3600)) # 24 hours
 
 if [[ ! -f "$STATUS_FILE" ]]; then
