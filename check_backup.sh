@@ -17,6 +17,7 @@ if [[ "$STATUS" == "running" ]]; then
     exit 1
 elif [[ "$STATUS" == "fail" ]]; then
     echo "CRITICAL: Backup failed!"
+    tail -n 10 /var/log/restic.log
     exit 2
 elif [[ "$AGE" -gt "$MAX_AGE" ]]; then
     echo "CRITICAL: Last backup is too old ($((AGE / 3600)) hours)"
