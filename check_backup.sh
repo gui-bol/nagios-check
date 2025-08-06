@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Default values
-DEFAULT_MAX_AGE_HOURS=48
 DEFAULT_STATUS_FILE="/var/run/backup_status"
+DEFAULT_MAX_AGE_HOURS=72  # Default to 3 days for weekly schedules
+DEFAULT_BACKUP_DAYS="1,3,5"  # Monday, Wednesday, Friday (0=Sunday, 1=Monday, ..., 6=Saturday)
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -15,10 +16,15 @@ while [[ $# -gt 0 ]]; do
             MAX_AGE_HOURS="$2"
             shift 2
             ;;
+        -d|--days)
+            BACKUP_DAYS="$2"
+            shift 2
+            ;;
         -h|--help)
             echo "Usage: $0 [OPTIONS]"
             echo "  -f, --file FILE      Path to status file (default: $DEFAULT_STATUS_FILE)"
-            echo "  -a, --max-age HOURS  Maximum backup age in hours (default: $DEFAULT_MAX_AGE_HOURS)"
+            echo "  -a, --max-age HOURS  Maximum backup age in hours (default: $DEFAULT_MAX_AGE_HOURS or calculated from backup days)"
+            echo "  -d, --days DAYS      Comma-separated days of week for backups (0-6, 0=Sunday, e.g. '1,3,5' for Mon,Wed,Fri)"
             echo "  -h, --help          Show this help message"
             exit 0
             ;;
@@ -37,10 +43,40 @@ done
 
 # Set defaults if not provided
 : "${STATUS_FILE:=$DEFAULT_STATUS_FILE}"
-: "${MAX_AGE_HOURS:=$DEFAULT_MAX_AGE_HOURS}"
+: "${BACKUP_DAYS:=$DEFAULT_BACKUP_DAYS}"
 
-# Convert hours to seconds
-MAX_AGE=$((MAX_AGE_HOURS * 3600))
+# If backup days are specified, calculate the maximum allowed age
+if [[ -n "$BACKUP_DAYS" ]]; then
+    # Convert comma-separated days to array
+    IFS=',' read -ra DAYS_ARRAY <<< "$BACKUP_DAYS"
+    
+    # Get current day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+    CURRENT_DOW=$(date +%w)
+    
+    # Find the next backup day
+    NEXT_BACKUP_DAY=-1
+    for day in "${DAYS_ARRAY[@]}"; do
+        if [[ $day -gt $CURRENT_DOW ]]; then
+            NEXT_BACKUP_DAY=$day
+            break
+        fi
+    done
+    
+    # If no next day this week, take the first day of next week
+    if [[ $NEXT_BACKUP_DAY -eq -1 ]]; then
+        NEXT_BACKUP_DAY=${DAYS_ARRAY[0]}
+        DAYS_UNTIL_NEXT=$((7 - CURRENT_DOW + NEXT_BACKUP_DAY))
+    else
+        DAYS_UNTIL_NEXT=$((NEXT_BACKUP_DAY - CURRENT_DOW))
+    fi
+    
+    # Calculate maximum age in seconds (current time until next backup day + 12 hours grace period)
+    MAX_AGE=$(( (DAYS_UNTIL_NEXT * 24 * 3600) + (12 * 3600) ))
+else
+    # Fall back to fixed hours if no backup days specified
+    : "${MAX_AGE_HOURS:=$DEFAULT_MAX_AGE_HOURS}"
+    MAX_AGE=$((MAX_AGE_HOURS * 3600))
+fi
 
 if [[ ! -f "$STATUS_FILE" ]]; then
     echo "CRITICAL: No backup status file found!"
