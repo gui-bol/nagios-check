@@ -4,6 +4,7 @@
 DEFAULT_STATUS_FILE="/var/run/backup_status"
 DEFAULT_MAX_AGE_HOURS=72  # Default to 3 days for weekly schedules
 DEFAULT_BACKUP_DAYS="1,3,5"  # Monday, Wednesday, Friday (0=Sunday, 1=Monday, ..., 6=Saturday)
+DEFAULT_RESTIC_LOG="/var/log/restic.log"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -20,11 +21,16 @@ while [[ $# -gt 0 ]]; do
             BACKUP_DAYS="$2"
             shift 2
             ;;
+        -l|--log)
+            RESTIC_LOG="$2"
+            shift 2
+            ;;
         -h|--help)
             echo "Usage: $0 [OPTIONS]"
             echo "  -f, --file FILE      Path to status file (default: $DEFAULT_STATUS_FILE)"
             echo "  -a, --max-age HOURS  Maximum backup age in hours (default: $DEFAULT_MAX_AGE_HOURS or calculated from backup days)"
             echo "  -d, --days DAYS      Comma-separated days of week for backups (0-6, 0=Sunday, e.g. '1,3,5' for Mon,Wed,Fri)"
+            echo "  -l, --log FILE       Path to restic log file (default: $DEFAULT_RESTIC_LOG)"
             echo "  -h, --help          Show this help message"
             exit 0
             ;;
@@ -43,6 +49,7 @@ done
 
 # Set defaults if not provided
 : "${STATUS_FILE:=$DEFAULT_STATUS_FILE}"
+: "${RESTIC_LOG:=$DEFAULT_RESTIC_LOG}"
 : "${BACKUP_DAYS:=$DEFAULT_BACKUP_DAYS}"
 
 # If backup days are specified, calculate the maximum allowed age
@@ -92,7 +99,11 @@ if [[ "$STATUS" == "running" ]]; then
     exit 1
 elif [[ "$STATUS" == "fail" ]]; then
     echo "CRITICAL: Backup failed!"
-    tail -n 10 /var/log/restic.log
+    if [[ -f "$RESTIC_LOG" ]]; then
+        tail -n 10 "$RESTIC_LOG"
+    else
+        echo "restic log not found at $RESTIC_LOG"
+    fi
     exit 2
 elif [[ "$AGE" -gt "$MAX_AGE" ]]; then
     echo "CRITICAL: Last backup is too old ($((AGE / 3600)) hours)"
