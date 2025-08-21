@@ -52,8 +52,12 @@ done
 : "${RESTIC_LOG:=$DEFAULT_RESTIC_LOG}"
 : "${BACKUP_DAYS:=$DEFAULT_BACKUP_DAYS}"
 
-# If backup days are specified, calculate the maximum allowed age
-if [[ -n "$BACKUP_DAYS" ]]; then
+# Determine MAX_AGE. Prioritize explicitly set MAX_AGE_HOURS, then BACKUP_DAYS calculation, then default.
+if [[ -n "$MAX_AGE_HOURS" ]]; then
+    # Use explicitly provided max age
+    MAX_AGE=$((MAX_AGE_HOURS * 3600))
+elif [[ -n "$BACKUP_DAYS" ]]; then
+    # If backup days are specified, calculate the maximum allowed age
     # Convert comma-separated days to array
     IFS=',' read -ra DAYS_ARRAY <<< "$BACKUP_DAYS"
     
@@ -80,9 +84,8 @@ if [[ -n "$BACKUP_DAYS" ]]; then
     # Calculate maximum age in seconds (current time until next backup day + 12 hours grace period)
     MAX_AGE=$(( (DAYS_UNTIL_NEXT * 24 * 3600) + (12 * 3600) ))
 else
-    # Fall back to fixed hours if no backup days specified
-    : "${MAX_AGE_HOURS:=$DEFAULT_MAX_AGE_HOURS}"
-    MAX_AGE=$((MAX_AGE_HOURS * 3600))
+    # Fall back to fixed hours if no other options are provided
+    MAX_AGE=$((DEFAULT_MAX_AGE_HOURS * 3600))
 fi
 
 if [[ ! -f "$STATUS_FILE" ]]; then
